@@ -1,0 +1,82 @@
+{
+  "entities": {
+    "Case": {
+      "title": "Legal Case",
+      "description": "A judgment from a Nigerian court.",
+      "type": "object",
+      "properties": {
+        "caseName": { "type": "string" },
+        "citation": { "type": "string" },
+        "court": { "type": "string", "enum": ["Supreme Court", "Court of Appeal", "High Court"] },
+        "year": { "type": "integer" },
+        "legalDomain": { "type": "string" },
+        "judge": { "type": "string" },
+        "summary": { "type": "string" },
+        "fullText": { "type": "string" },
+        "authorityWeight": { "type": "integer" },
+        "citatorStatus": { "type": "string", "enum": ["followed", "distinguished", "overruled"] },
+        "citedBy": { "type": "array", "items": { "type": "string" }, "description": "IDs of cases that cite this one" },
+        "cites": { "type": "array", "items": { "type": "string" }, "description": "IDs of cases this one cites" }
+      },
+      "required": ["caseName", "court", "year", "legalDomain"]
+    },
+    "Statute": {
+      "title": "Statute/Act",
+      "description": "A section of a Nigerian law.",
+      "type": "object",
+      "properties": {
+        "actName": { "type": "string" },
+        "chapter": { "type": "string" },
+        "section": { "type": "string" },
+        "subsection": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "legalDomain": { "type": "string" }
+      },
+      "required": ["actName", "section", "content"]
+    },
+    "LegalBrief": {
+      "title": "Legal Brief",
+      "description": "A generated legal argument or brief.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "query": { "type": "string" },
+        "analysis": { "type": "object" },
+        "domain": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "analysis"]
+    },
+    "WaitlistEntry": {
+      "title": "Waitlist Entry",
+      "description": "A user who has requested access to the platform.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pending", "approved", "denied"] }
+      },
+      "required": ["email", "createdAt", "status"]
+    },
+    "UsageRecord": {
+      "title": "Usage Record",
+      "description": "Tracking daily AI generations per user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "count": { "type": "integer" }
+      },
+      "required": ["userId", "date", "count"]
+    }
+  },
+  "firestore": {
+    "cases": { "schema": "Case", "description": "Collection of legal cases and judgments" },
+    "statutes": { "schema": "Statute", "description": "Collection of laws and sections" },
+    "briefs": { "schema": "LegalBrief", "description": "User-generated legal briefs" },
+    "waitlist": { "schema": "WaitlistEntry", "description": "Waitlist registrations" },
+    "usage": { "schema": "UsageRecord", "description": "Daily usage tracking" }
+  }
+}

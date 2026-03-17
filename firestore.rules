@@ -1,0 +1,101 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: cases
+    // Fields: caseName, citation, court, year, legalDomain, judge, summary, fullText, authorityWeight, citatorStatus, createdAt
+    //
+    // Collection: statutes
+    // Fields: actName, chapter, section, subsection, content, legalDomain
+    //
+    // Collection: briefs
+    // Fields: userId, title, query, content, authorities, createdAt
+    // Collection: usage
+    // Fields: userId, date, count
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        (request.auth.token.email == "brightifeoluwa0@gmail.com" && request.auth.token.email_verified == true)
+      );
+    }
+
+    function isOnWaitlist() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/waitlist/$(request.auth.token.email));
+    }
+
+    // Validation Functions
+    function isValidWaitlistEntry(data) {
+      return data.email is string && data.email.size() < 200 &&
+             data.createdAt is string &&
+             data.status in ['pending', 'approved', 'denied'];
+    }
+
+    function isValidUsageRecord(data) {
+      return data.userId == request.auth.uid &&
+             data.date is string &&
+             data.count is int && data.count >= 0 && data.count <= 2;
+    }
+
+    function isValidCase(data) {
+      return data.caseName is string && data.caseName.size() < 500 &&
+             data.legalDomain in ['constitutional_law', 'criminal_law', 'civil_litigation', 'labour_law', 'electoral_law', 'administrative_law'];
+    }
+
+    function isValidBrief(data) {
+      return data.userId == request.auth.uid &&
+             data.title is string && data.title.size() < 200 &&
+             data.content is string && data.content.size() < 50000;
+    }
+
+    // Rules
+    match /waitlist/{email} {
+      // Anyone can join the waitlist
+      allow create: if request.resource.data.status == 'pending';
+      // Only the user or admin can read their status
+      allow read: if isAdmin() || (isAuthenticated() && request.auth.token.email == email);
+      // Allow admin to update status
+      allow update: if isAdmin();
+    }
+
+    match /usage/{usageId} {
+      // usageId is userId_date
+      allow read: if isAuthenticated() && usageId.startsWith(request.auth.uid);
+      allow create, update: if isAuthenticated() && usageId.startsWith(request.auth.uid) && isValidUsageRecord(request.resource.data);
+    }
+
+    match /cases/{caseId} {
+      allow read: if true; // Public legal knowledge
+      allow write: if isAdmin();
+    }
+
+    match /statutes/{statuteId} {
+      allow read: if true; // Public legal knowledge
+      allow write: if isAdmin();
+    }
+
+    match /briefs/{briefId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidBrief(request.resource.data);
+      allow update: if isAuthenticated() && isOwner(resource.data.userId) && isValidBrief(request.resource.data);
+      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId) || isAdmin();
+    }
+  }
+}
